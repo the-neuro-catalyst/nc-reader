@@ -4,6 +4,7 @@ use std::path::PathBuf; // New import for PathBuf
 
 use serde::{Deserialize, Serialize};
 
+use crate::error::DataReaderError;
 use crate::output::OutputFormat;
 use crate::reader::csv_reader::CsvData;
 use crate::reader::gzip_reader::GzipData;
@@ -19,9 +20,9 @@ use crate::reader::txt_reader::TextData;
 use crate::reader::xml_reader::XmlData;
 use crate::reader::yaml_reader::YamlData;
 use crate::reader::zip_reader::ZipData;
-use crate::error::DataReaderError;
 
-pub type RecordStream = Box<dyn Iterator<Item = Result<serde_json::Value, DataReaderError>> + Send>;
+pub type RecordStream =
+    Box<dyn Iterator<Item = Result<serde_json::Value, DataReaderError,>,> + Send,>;
 
 #[derive(Debug, Serialize, Deserialize,)]
 pub struct FileMetadata {
@@ -52,30 +53,52 @@ pub enum DataReaderResult {
     #[serde(skip_serializing)] // Skip serialization of this variant directly
     DirectoryResults(Vec<(PathBuf, DataReaderResult,),>, FileMetadata,), // New variant
     #[serde(skip)]
-    Stream(RecordStream, FileMetadata),
+    Stream(RecordStream, FileMetadata,),
 }
 
 impl fmt::Debug for DataReaderResult {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_,>,) -> fmt::Result {
         match self {
-            DataReaderResult::Csv(d, m) => f.debug_tuple("Csv").field(d).field(m).finish(),
-            DataReaderResult::Gzip(d, m) => f.debug_tuple("Gzip").field(d).field(m).finish(),
-            DataReaderResult::Image(d, m) => f.debug_tuple("Image").field(d).field(m).finish(),
-            DataReaderResult::Json(d, m) => f.debug_tuple("Json").field(d).field(m).finish(),
-            DataReaderResult::Markdown(d, m) => f.debug_tuple("Markdown").field(d).field(m).finish(),
-            DataReaderResult::Parquet(d, m) => f.debug_tuple("Parquet").field(d).field(m).finish(),
-            DataReaderResult::ParquetAnalysis(d, m) => f.debug_tuple("ParquetAnalysis").field(d).field(m).finish(),
-            DataReaderResult::Pdf(d, m) => f.debug_tuple("Pdf").field(d).field(m).finish(),
-            DataReaderResult::Spreadsheet(d, m) => f.debug_tuple("Spreadsheet").field(d).field(m).finish(),
-            DataReaderResult::Sqlite(d, m) => f.debug_tuple("Sqlite").field(d).field(m).finish(),
-            DataReaderResult::Toml(d, m) => f.debug_tuple("Toml").field(d).field(m).finish(),
-            DataReaderResult::Text(d, m) => f.debug_tuple("Text").field(d).field(m).finish(),
-            DataReaderResult::Xml(d, m) => f.debug_tuple("Xml").field(d).field(m).finish(),
-            DataReaderResult::Yaml(d, m) => f.debug_tuple("Yaml").field(d).field(m).finish(),
-            DataReaderResult::Zip(d, m) => f.debug_tuple("Zip").field(d).field(m).finish(),
-            DataReaderResult::RawContent(d, m) => f.debug_tuple("RawContent").field(d).field(m).finish(),
-            DataReaderResult::DirectoryResults(d, m) => f.debug_tuple("DirectoryResults").field(d).field(m).finish(),
-            DataReaderResult::Stream(_, m) => f.debug_tuple("Stream").field(&"<RecordStream>").field(m).finish(),
+            DataReaderResult::Csv(d, m,) => f.debug_tuple("Csv",).field(d,).field(m,).finish(),
+            DataReaderResult::Gzip(d, m,) => f.debug_tuple("Gzip",).field(d,).field(m,).finish(),
+            DataReaderResult::Image(d, m,) => f.debug_tuple("Image",).field(d,).field(m,).finish(),
+            DataReaderResult::Json(d, m,) => f.debug_tuple("Json",).field(d,).field(m,).finish(),
+            DataReaderResult::Markdown(d, m,) => {
+                f.debug_tuple("Markdown",).field(d,).field(m,).finish()
+            },
+            DataReaderResult::Parquet(d, m,) => {
+                f.debug_tuple("Parquet",).field(d,).field(m,).finish()
+            },
+            DataReaderResult::ParquetAnalysis(d, m,) => f
+                .debug_tuple("ParquetAnalysis",)
+                .field(d,)
+                .field(m,)
+                .finish(),
+            DataReaderResult::Pdf(d, m,) => f.debug_tuple("Pdf",).field(d,).field(m,).finish(),
+            DataReaderResult::Spreadsheet(d, m,) => {
+                f.debug_tuple("Spreadsheet",).field(d,).field(m,).finish()
+            },
+            DataReaderResult::Sqlite(d, m,) => {
+                f.debug_tuple("Sqlite",).field(d,).field(m,).finish()
+            },
+            DataReaderResult::Toml(d, m,) => f.debug_tuple("Toml",).field(d,).field(m,).finish(),
+            DataReaderResult::Text(d, m,) => f.debug_tuple("Text",).field(d,).field(m,).finish(),
+            DataReaderResult::Xml(d, m,) => f.debug_tuple("Xml",).field(d,).field(m,).finish(),
+            DataReaderResult::Yaml(d, m,) => f.debug_tuple("Yaml",).field(d,).field(m,).finish(),
+            DataReaderResult::Zip(d, m,) => f.debug_tuple("Zip",).field(d,).field(m,).finish(),
+            DataReaderResult::RawContent(d, m,) => {
+                f.debug_tuple("RawContent",).field(d,).field(m,).finish()
+            },
+            DataReaderResult::DirectoryResults(d, m,) => f
+                .debug_tuple("DirectoryResults",)
+                .field(d,)
+                .field(m,)
+                .finish(),
+            DataReaderResult::Stream(_, m,) => f
+                .debug_tuple("Stream",)
+                .field(&"<RecordStream>",)
+                .field(m,)
+                .finish(),
         }
     }
 }
@@ -247,7 +270,9 @@ impl DataReaderResult {
                         }
                         output
                     },
-                    DataReaderResult::Stream(_, _metadata,) => "Stream data (cannot be displayed)".to_string(),
+                    DataReaderResult::Stream(_, _metadata,) => {
+                        "Stream data (cannot be displayed)".to_string()
+                    },
                     _ => format!("{:?}", self),
                 } // This closes the match self block
             }, // This closes the OutputFormat::Text arm

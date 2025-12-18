@@ -5,7 +5,7 @@ version = "0.0.1-alpha"
 authors = ["The Architect <architect@theneurocatalyst.com>"]
 edition = "2024"
 license = "MIT"
-repository = "[https://github.com/The-Neuro-Catalyst-Foundation/nc-reader](https://github.com/The-Neuro-Catalyst-Foundation/nc-reader)"
+repository = "[https://github.com/the-neuro-catalyst/nc-reader](https://github.com/the-neuro-catalyst/nc-reader)"
 categories = ["science", "data-structures", "algorithms"]
 keywords = ["scm-protocol", "velocity-mechanics", "zero-friction"]
 
@@ -43,7 +43,7 @@ arrow-flight.workspace = true
 tracing.workspace = true
 tracing-subscriber.workspace = true
 tracing-appender.workspace = true
-nc-schema = { path = "../nc_schema" }
+nc_schema = { workspace = true }
 chardetng.workspace = true
 encoding_rs.workspace = true
 encoding_rs_io.workspace = true

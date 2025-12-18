@@ -3,26 +3,26 @@ use std::fs::File;
 use std::io::{BufReader, Read};
 use std::path::{Path, PathBuf};
 
+use nc_schema::{DataType, merge_nc_types};
 use quick_xml::events::Event;
 use quick_xml::reader::Reader;
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 
 use crate::error::DataReaderError;
-use nc_schema::{DataType, merge_nc_types};
 
-pub struct XmlReader<R: std::io::BufRead> {
-    reader: Reader<R>,
-    buf: Vec<u8>,
-    path: PathBuf,
-    depth: usize,
-    root_tag: Option<String>,
+pub struct XmlReader<R: std::io::BufRead,> {
+    reader:   Reader<R,>,
+    buf:      Vec<u8,>,
+    path:     PathBuf,
+    depth:    usize,
+    root_tag: Option<String,>,
 }
 
-impl<R: std::io::BufRead> XmlReader<R> {
-    pub fn new(reader_input: R, path: PathBuf) -> Self {
-        let mut reader = Reader::from_reader(reader_input);
-        reader.config_mut().trim_text(true);
+impl<R: std::io::BufRead,> XmlReader<R,> {
+    pub fn new(reader_input: R, path: PathBuf,) -> Self {
+        let mut reader = Reader::from_reader(reader_input,);
+        reader.config_mut().trim_text(true,);
         Self {
             reader,
             buf: Vec::new(),
@@ -32,34 +32,37 @@ impl<R: std::io::BufRead> XmlReader<R> {
         }
     }
 
-    fn parse_element(&mut self, start: quick_xml::events::BytesStart) -> Result<Value, DataReaderError> {
+    fn parse_element(
+        &mut self,
+        start: quick_xml::events::BytesStart,
+    ) -> Result<Value, DataReaderError,> {
         let mut map = Map::new();
-        
+
         // Handle attributes
         for attr_result in start.attributes() {
             let attr = attr_result.map_err(|e| DataReaderError::ParseError {
-                path: self.path.clone(),
-                source: Box::new(e),
-            })?;
-            let key = String::from_utf8_lossy(attr.key.into_inner()).to_string();
-            let value_str = String::from_utf8_lossy(&attr.value).to_string();
-            
+                path:   self.path.clone(),
+                source: Box::new(e,),
+            },)?;
+            let key = String::from_utf8_lossy(attr.key.into_inner(),).to_string();
+            let value_str = String::from_utf8_lossy(&attr.value,).to_string();
+
             // Convert to JSON type
-            let value = if let Ok(i) = value_str.parse::<i64>() {
-                Value::Number(i.into())
-            } else if let Ok(f) = value_str.parse::<f64>() {
-                serde_json::Number::from_f64(f)
-                    .map(Value::Number)
-                    .unwrap_or(Value::String(value_str))
+            let value = if let Ok(i,) = value_str.parse::<i64>() {
+                Value::Number(i.into(),)
+            } else if let Ok(f,) = value_str.parse::<f64>() {
+                serde_json::Number::from_f64(f,)
+                    .map(Value::Number,)
+                    .unwrap_or(Value::String(value_str,),)
             } else if value_str.to_lowercase() == "true" {
-                Value::Bool(true)
+                Value::Bool(true,)
             } else if value_str.to_lowercase() == "false" {
-                Value::Bool(false)
+                Value::Bool(false,)
             } else {
-                Value::String(value_str)
+                Value::String(value_str,)
             };
 
-            map.insert(format!("@{}", key), value);
+            map.insert(format!("@{}", key), value,);
         }
 
         let mut text_content = String::new();
@@ -67,89 +70,98 @@ impl<R: std::io::BufRead> XmlReader<R> {
 
         loop {
             self.buf.clear();
-            match self.reader.read_event_into(&mut self.buf) {
-                Ok(Event::Start(e)) => {
-                    let name = String::from_utf8_lossy(e.name().into_inner()).to_string();
+            match self.reader.read_event_into(&mut self.buf,) {
+                Ok(Event::Start(e,),) => {
+                    let name = String::from_utf8_lossy(e.name().into_inner(),).to_string();
                     let e_owned = e.into_owned();
-                    let child_value = self.parse_element(e_owned)?;
-                    
+                    let child_value = self.parse_element(e_owned,)?;
+
                     // Handle multiple children with same name by converting to array
-                    match children.entry(name.clone()) {
-                        serde_json::map::Entry::Vacant(entry) => {
-                            entry.insert(child_value);
-                        }
-                        serde_json::map::Entry::Occupied(mut entry) => {
-                            if let Value::Array(arr) = entry.get_mut() {
-                                arr.push(child_value);
+                    match children.entry(name.clone(),) {
+                        serde_json::map::Entry::Vacant(entry,) => {
+                            entry.insert(child_value,);
+                        },
+                        serde_json::map::Entry::Occupied(mut entry,) => {
+                            if let Value::Array(arr,) = entry.get_mut() {
+                                arr.push(child_value,);
                             } else {
-                                let old_val = entry.insert(Value::Array(vec![]));
-                                if let Value::Array(arr) = entry.get_mut() {
-                                    arr.push(old_val);
-                                    arr.push(child_value);
+                                let old_val = entry.insert(Value::Array(vec![],),);
+                                if let Value::Array(arr,) = entry.get_mut() {
+                                    arr.push(old_val,);
+                                    arr.push(child_value,);
                                 }
                             }
-                        }
+                        },
                     }
-                }
-                Ok(Event::End(_)) => break,
-                Ok(Event::Text(e)) => {
-                    text_content.push_str(&String::from_utf8_lossy(&e));
-                }
-                Ok(Event::Empty(e)) => {
-                    let name = String::from_utf8_lossy(e.name().into_inner()).to_string();
+                },
+                Ok(Event::End(_,),) => break,
+                Ok(Event::Text(e,),) => {
+                    text_content.push_str(&String::from_utf8_lossy(&e,),);
+                },
+                Ok(Event::Empty(e,),) => {
+                    let name = String::from_utf8_lossy(e.name().into_inner(),).to_string();
                     let mut child_map = Map::new();
                     for attr_result in e.attributes() {
                         let attr = attr_result.map_err(|e| DataReaderError::ParseError {
-                            path: self.path.clone(),
-                            source: Box::new(e),
-                        })?;
-                        let key = String::from_utf8_lossy(attr.key.into_inner()).to_string();
-                        let value_str = String::from_utf8_lossy(&attr.value).to_string();
-                        
-                        let value = if let Ok(i) = value_str.parse::<i64>() {
-                            Value::Number(i.into())
-                        } else if let Ok(f) = value_str.parse::<f64>() {
-                            serde_json::Number::from_f64(f)
-                                .map(Value::Number)
-                                .unwrap_or(Value::String(value_str))
+                            path:   self.path.clone(),
+                            source: Box::new(e,),
+                        },)?;
+                        let key = String::from_utf8_lossy(attr.key.into_inner(),).to_string();
+                        let value_str = String::from_utf8_lossy(&attr.value,).to_string();
+
+                        let value = if let Ok(i,) = value_str.parse::<i64>() {
+                            Value::Number(i.into(),)
+                        } else if let Ok(f,) = value_str.parse::<f64>() {
+                            serde_json::Number::from_f64(f,)
+                                .map(Value::Number,)
+                                .unwrap_or(Value::String(value_str,),)
                         } else if value_str.to_lowercase() == "true" {
-                            Value::Bool(true)
+                            Value::Bool(true,)
                         } else if value_str.to_lowercase() == "false" {
-                            Value::Bool(false)
+                            Value::Bool(false,)
                         } else {
-                            Value::String(value_str)
+                            Value::String(value_str,)
                         };
-                        
-                        child_map.insert(format!("@{}", key), value);
+
+                        child_map.insert(format!("@{}", key), value,);
                     }
-                    
-                    let child_value = if child_map.is_empty() { Value::Null } else { Value::Object(child_map) };
-                    
-                    match children.entry(name) {
-                        serde_json::map::Entry::Vacant(entry) => {
-                            entry.insert(child_value);
-                        }
-                        serde_json::map::Entry::Occupied(mut entry) => {
-                            if let Value::Array(arr) = entry.get_mut() {
-                                arr.push(child_value);
+
+                    let child_value = if child_map.is_empty() {
+                        Value::Null
+                    } else {
+                        Value::Object(child_map,)
+                    };
+
+                    match children.entry(name,) {
+                        serde_json::map::Entry::Vacant(entry,) => {
+                            entry.insert(child_value,);
+                        },
+                        serde_json::map::Entry::Occupied(mut entry,) => {
+                            if let Value::Array(arr,) = entry.get_mut() {
+                                arr.push(child_value,);
                             } else {
-                                let old_val = entry.insert(Value::Array(vec![]));
-                                if let Value::Array(arr) = entry.get_mut() {
-                                    arr.push(old_val);
-                                    arr.push(child_value);
+                                let old_val = entry.insert(Value::Array(vec![],),);
+                                if let Value::Array(arr,) = entry.get_mut() {
+                                    arr.push(old_val,);
+                                    arr.push(child_value,);
                                 }
                             }
-                        }
+                        },
                     }
-                }
-                Ok(Event::CData(e)) => {
-                    text_content.push_str(&String::from_utf8_lossy(&e));
-                }
-                Ok(Event::Eof) => return Err(DataReaderError::ParseError {
-                    path: self.path.clone(),
-                    source: Box::new(std::io::Error::new(std::io::ErrorKind::UnexpectedEof, "Unexpected EOF while parsing element")),
-                }),
-                _ => {}
+                },
+                Ok(Event::CData(e,),) => {
+                    text_content.push_str(&String::from_utf8_lossy(&e,),);
+                },
+                Ok(Event::Eof,) => {
+                    return Err(DataReaderError::ParseError {
+                        path:   self.path.clone(),
+                        source: Box::new(std::io::Error::new(
+                            std::io::ErrorKind::UnexpectedEof,
+                            "Unexpected EOF while parsing element",
+                        ),),
+                    },);
+                },
+                _ => {},
             }
         }
 
@@ -158,96 +170,111 @@ impl<R: std::io::BufRead> XmlReader<R> {
                 // If it's just text, return the text value (attempting to parse as number/bool)
                 let trimmed = text_content.trim();
                 if trimmed.is_empty() {
-                    return Ok(Value::Null);
+                    return Ok(Value::Null,);
                 }
-                if let Ok(i) = trimmed.parse::<i64>() {
-                    return Ok(Value::Number(i.into()));
+                if let Ok(i,) = trimmed.parse::<i64>() {
+                    return Ok(Value::Number(i.into(),),);
                 }
-                if let Ok(f) = trimmed.parse::<f64>() {
-                    if let Some(num) = serde_json::Number::from_f64(f) {
-                        return Ok(Value::Number(num));
-                    }
+                if let Ok(f,) = trimmed.parse::<f64>()
+                    && let Some(num,) = serde_json::Number::from_f64(f,)
+                {
+                    return Ok(Value::Number(num,),);
                 }
-                if trimmed.to_lowercase() == "true" { return Ok(Value::Bool(true)); }
-                if trimmed.to_lowercase() == "false" { return Ok(Value::Bool(false)); }
-                return Ok(Value::String(trimmed.to_string()));
+                if trimmed.to_lowercase() == "true" {
+                    return Ok(Value::Bool(true,),);
+                }
+                if trimmed.to_lowercase() == "false" {
+                    return Ok(Value::Bool(false,),);
+                }
+                Ok(Value::String(trimmed.to_string(),),)
             } else {
                 if !text_content.trim().is_empty() {
-                    map.insert("#text".to_string(), Value::String(text_content.trim().to_string()));
+                    map.insert(
+                        "#text".to_string(),
+                        Value::String(text_content.trim().to_string(),),
+                    );
                 }
-                return Ok(Value::Object(map));
+                Ok(Value::Object(map,),)
             }
         } else {
             // Merge map (attributes) and children
-            for (k, v) in children {
-                map.insert(k, v);
+            for (k, v,) in children {
+                map.insert(k, v,);
             }
             if !text_content.trim().is_empty() {
-                map.insert("#text".to_string(), Value::String(text_content.trim().to_string()));
+                map.insert(
+                    "#text".to_string(),
+                    Value::String(text_content.trim().to_string(),),
+                );
             }
-            return Ok(Value::Object(map));
+            Ok(Value::Object(map,),)
         }
     }
 }
 
-impl<R: std::io::BufRead> Iterator for XmlReader<R> {
-    type Item = Result<serde_json::Value, DataReaderError>;
+impl<R: std::io::BufRead,> Iterator for XmlReader<R,> {
+    type Item = Result<serde_json::Value, DataReaderError,>;
 
-    fn next(&mut self) -> Option<Self::Item> {
+    fn next(&mut self,) -> Option<Self::Item,> {
         loop {
             self.buf.clear();
-            match self.reader.read_event_into(&mut self.buf) {
-                Ok(Event::Start(e)) => {
+            match self.reader.read_event_into(&mut self.buf,) {
+                Ok(Event::Start(e,),) => {
                     self.depth += 1;
                     if self.depth == 1 {
-                        self.root_tag = Some(String::from_utf8_lossy(e.name().into_inner()).to_string());
+                        self.root_tag =
+                            Some(String::from_utf8_lossy(e.name().into_inner(),).to_string(),);
                         continue;
                     }
                     if self.depth == 2 {
                         // This is a record!
                         let e_owned = e.into_owned();
-                        let res = self.parse_element(e_owned);
+                        let res = self.parse_element(e_owned,);
                         self.depth -= 1; // parse_element consumed the End event
-                        return Some(res);
+                        return Some(res,);
                     }
-                }
-                Ok(Event::End(_)) => {
+                },
+                Ok(Event::End(_,),) => {
                     self.depth -= 1;
-                }
-                Ok(Event::Empty(e)) => {
+                },
+                Ok(Event::Empty(e,),) => {
                     if self.depth == 1 {
                         let mut map = Map::new();
-                        for attr_result in e.attributes() {
-                            if let Ok(attr) = attr_result {
-                                let key = String::from_utf8_lossy(attr.key.into_inner()).to_string();
-                                let value_str = String::from_utf8_lossy(&attr.value).to_string();
-                                
-                                let value = if let Ok(i) = value_str.parse::<i64>() {
-                                    Value::Number(i.into())
-                                } else if let Ok(f) = value_str.parse::<f64>() {
-                                    serde_json::Number::from_f64(f)
-                                        .map(Value::Number)
-                                        .unwrap_or(Value::String(value_str))
-                                } else if value_str.to_lowercase() == "true" {
-                                    Value::Bool(true)
-                                } else if value_str.to_lowercase() == "false" {
-                                    Value::Bool(false)
-                                } else {
-                                    Value::String(value_str)
-                                };
-                                
-                                map.insert(format!("@{}", key), value);
-                            }
+                        for attr in e.attributes().flatten() {
+                            let key = String::from_utf8_lossy(attr.key.into_inner(),).to_string();
+                            let value_str = String::from_utf8_lossy(&attr.value,).to_string();
+
+                            let value = if let Ok(i,) = value_str.parse::<i64>() {
+                                Value::Number(i.into(),)
+                            } else if let Ok(f,) = value_str.parse::<f64>() {
+                                serde_json::Number::from_f64(f,)
+                                    .map(Value::Number,)
+                                    .unwrap_or(Value::String(value_str,),)
+                            } else if value_str.to_lowercase() == "true" {
+                                Value::Bool(true,)
+                            } else if value_str.to_lowercase() == "false" {
+                                Value::Bool(false,)
+                            } else {
+                                Value::String(value_str,)
+                            };
+
+                            map.insert(format!("@{}", key), value,);
                         }
-                        return Some(Ok(if map.is_empty() { Value::Null } else { Value::Object(map) }));
+                        return Some(Ok(if map.is_empty() {
+                            Value::Null
+                        } else {
+                            Value::Object(map,)
+                        },),);
                     }
-                }
-                Ok(Event::Eof) => return None,
-                Err(e) => return Some(Err(DataReaderError::ParseError {
-                    path: self.path.clone(),
-                    source: Box::new(e),
-                })),
-                _ => {}
+                },
+                Ok(Event::Eof,) => return None,
+                Err(e,) => {
+                    return Some(Err(DataReaderError::ParseError {
+                        path:   self.path.clone(),
+                        source: Box::new(e,),
+                    },),);
+                },
+                _ => {},
             }
         }
     }
@@ -255,18 +282,20 @@ impl<R: std::io::BufRead> Iterator for XmlReader<R> {
 
 pub fn create_xml_stream(
     file_path: &Path,
-) -> Result<crate::nc_reader_result::RecordStream, DataReaderError> {
-    let file = File::open(file_path).map_err(|e| DataReaderError::FileReadError {
-        path: file_path.to_path_buf(),
+) -> Result<crate::nc_reader_result::RecordStream, DataReaderError,> {
+    let file = File::open(file_path,).map_err(|e| DataReaderError::FileReadError {
+        path:   file_path.to_path_buf(),
         source: e,
-    })?;
-    let decoder = crate::reader::charset::get_decoded_reader(file).map_err(|e| DataReaderError::FileReadError {
-        path: file_path.to_path_buf(),
-        source: e,
-    })?;
-    let reader = BufReader::new(decoder);
-    let xml_reader = XmlReader::new(reader, file_path.to_path_buf());
-    Ok(Box::new(xml_reader))
+    },)?;
+    let decoder = crate::reader::charset::get_decoded_reader(file,).map_err(|e| {
+        DataReaderError::FileReadError {
+            path:   file_path.to_path_buf(),
+            source: e,
+        }
+    },)?;
+    let reader = BufReader::new(decoder,);
+    let xml_reader = XmlReader::new(reader, file_path.to_path_buf(),);
+    Ok(Box::new(xml_reader,),)
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq,)]
@@ -420,9 +449,7 @@ fn infer_xml_schema<R: std::io::BufRead,>(
                         current_schema.has_text_content = true;
                         let new_type = identify_nc_type(&text,);
                         current_schema.text_content_type = match &current_schema.text_content_type {
-                            Some(prev_type,) => {
-                                Some(merge_nc_types(prev_type.clone(), new_type,),)
-                            },
+                            Some(prev_type,) => Some(merge_nc_types(prev_type.clone(), new_type,),),
                             None => Some(new_type,),
                         };
                     }
@@ -618,10 +645,12 @@ pub fn read_xml_content(
             path:   file_path.to_path_buf(),
             source: e,
         },)?;
-        let decoder = crate::reader::charset::get_decoded_reader(file).map_err(|e| DataReaderError::FileReadError {
-            path: file_path.to_path_buf(),
-            source: e,
-        })?;
+        let decoder = crate::reader::charset::get_decoded_reader(file,).map_err(|e| {
+            DataReaderError::FileReadError {
+                path:   file_path.to_path_buf(),
+                source: e,
+            }
+        },)?;
         let reader = BufReader::new(decoder,);
         let lines: Vec<String,> = reader
             .lines()
@@ -637,10 +666,12 @@ pub fn read_xml_content(
         path:   file_path.to_path_buf(),
         source: e,
     },)?;
-    let decoder = crate::reader::charset::get_decoded_reader(file).map_err(|e| DataReaderError::FileReadError {
-        path: file_path.to_path_buf(),
-        source: e,
-    })?;
+    let decoder = crate::reader::charset::get_decoded_reader(file,).map_err(|e| {
+        DataReaderError::FileReadError {
+            path:   file_path.to_path_buf(),
+            source: e,
+        }
+    },)?;
     let buf_reader = BufReader::new(decoder,);
     let mut reader = Reader::from_reader(buf_reader,);
     reader.config_mut().trim_text(true,);
@@ -681,10 +712,12 @@ pub fn read_xml_content(
         path:   file_path.to_path_buf(),
         source: e,
     },)?;
-    let decoder = crate::reader::charset::get_decoded_reader(file).map_err(|e| DataReaderError::FileReadError {
-        path: file_path.to_path_buf(),
-        source: e,
-    })?;
+    let decoder = crate::reader::charset::get_decoded_reader(file,).map_err(|e| {
+        DataReaderError::FileReadError {
+            path:   file_path.to_path_buf(),
+            source: e,
+        }
+    },)?;
     let buf_reader = BufReader::new(decoder,);
     let inferred_schema = infer_xml_schema(buf_reader, file_path,).ok();
 
@@ -693,12 +726,14 @@ pub fn read_xml_content(
             path:   file_path.to_path_buf(),
             source: e,
         },)?;
-        let mut decoder = crate::reader::charset::get_decoded_reader(file).map_err(|e| DataReaderError::FileReadError {
-            path: file_path.to_path_buf(),
-            source: e,
-        })?;
+        let mut decoder = crate::reader::charset::get_decoded_reader(file,).map_err(|e| {
+            DataReaderError::FileReadError {
+                path:   file_path.to_path_buf(),
+                source: e,
+            }
+        },)?;
         let mut s = String::new();
-        if decoder.read_to_string(&mut s).is_err() {
+        if decoder.read_to_string(&mut s,).is_err() {
             "[Error reading content]".to_string()
         } else {
             s

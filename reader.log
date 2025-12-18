@@ -31,3 +31,12 @@
 2025-12-18T11:15:21.696135Z  INFO data_reader: The current directory is /home/jp/Development/NO_WAY_BACK/data_analyzer/data_reader
 2025-12-18T11:15:21.696137Z  INFO data_reader: The current directory is /home/jp/Development/NO_WAY_BACK/data_analyzer/data_reader
 2025-12-18T11:15:21.699920Z  WARN data_reader: Warning: Could not canonicalize output path. Using original path.
+2025-12-18T14:35:53.037395Z  INFO nc_reader: The current directory is /home/jp/Development/NO_WAY_BACK/data_analyzer/nc_reader
+2025-12-18T14:35:53.038868Z  INFO nc_reader: The current directory is /home/jp/Development/NO_WAY_BACK/data_analyzer/nc_reader
+2025-12-18T14:35:53.039383Z  WARN nc_reader: Warning: Could not canonicalize output path. Using original path.
+2025-12-18T14:36:03.780286Z  INFO nc_reader: The current directory is /home/jp/Development/NO_WAY_BACK/data_analyzer/nc_reader
+2025-12-18T14:36:03.780396Z  INFO nc_reader: The current directory is /home/jp/Development/NO_WAY_BACK/data_analyzer/nc_reader
+2025-12-18T14:36:03.786358Z  WARN nc_reader: Warning: Could not canonicalize output path. Using original path.
+2025-12-18T14:36:22.643222Z  INFO nc_reader: The current directory is /home/jp/Development/NO_WAY_BACK/data_analyzer/nc_reader
+2025-12-18T14:36:22.644084Z  INFO nc_reader: The current directory is /home/jp/Development/NO_WAY_BACK/data_analyzer/nc_reader
+2025-12-18T14:36:22.644436Z  WARN nc_reader: Warning: Could not canonicalize output path. Using original path.

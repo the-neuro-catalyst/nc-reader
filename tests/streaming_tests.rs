@@ -75,10 +75,10 @@ fn test_large_xml_parsing() {
 #[test]
 fn test_xml_streaming() {
     let dir = tempdir().unwrap();
-    let file_path = dir.path().join("stream.xml");
+    let file_path = dir.path().join("stream.xml",);
 
     {
-        let mut file = File::create(&file_path).unwrap();
+        let mut file = File::create(&file_path,).unwrap();
         writeln!(file, "<root>").unwrap();
         for i in 0..10 {
             writeln!(file, "  <item id=\"{}\">content {}</item>", i, i).unwrap();
@@ -86,7 +86,7 @@ fn test_xml_streaming() {
         writeln!(file, "</root>").unwrap();
     }
 
-    let stream_result = nc_reader::reader::xml_reader::create_xml_stream(&file_path);
+    let stream_result = nc_reader::reader::xml_reader::create_xml_stream(&file_path,);
     assert!(stream_result.is_ok());
     let stream = stream_result.unwrap();
 
@@ -96,7 +96,7 @@ fn test_xml_streaming() {
         let record = record_res.unwrap();
         assert_eq!(record["@id"], serde_json::Value::from(count));
         // For <item>content 0</item>, it should be parsed as text if no children
-        // Wait, my parse_element for <item id="0">content 0</item> 
+        // Wait, my parse_element for <item id="0">content 0</item>
         // will have an attribute, so it will be an object with "@id" and "#text"
         assert_eq!(record["#text"], format!("content {}", count));
         count += 1;
@@ -106,12 +106,12 @@ fn test_xml_streaming() {
 
 #[test]
 fn test_parquet_streaming() {
-    let file_path = Path::new("../test_data/sample.parquet");
+    let file_path = Path::new("../test_data/sample.parquet",);
     if !file_path.exists() {
         return;
     }
 
-    let stream_result = nc_reader::reader::parquet_reader::read_parquet_stream(file_path);
+    let stream_result = nc_reader::reader::parquet_reader::read_parquet_stream(file_path,);
     assert!(stream_result.is_ok());
     let stream = stream_result.unwrap();
 

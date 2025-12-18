@@ -1,3 +1,4 @@
+pub mod charset;
 pub mod csv_reader;
 pub mod gzip_reader;
 pub mod image_reader;
@@ -12,4 +13,3 @@ pub mod txt_reader;
 pub mod xml_reader;
 pub mod yaml_reader;
 pub mod zip_reader;
-pub mod charset;

@@ -2,17 +2,17 @@ use std::collections::HashMap;
 use std::fs::File;
 use std::path::Path;
 
+use nc_schema::{DataType, merge_nc_types};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use crate::error::DataReaderError;
-use nc_schema::{DataType, merge_nc_types};
 use crate::nc_reader_result::RecordStream;
 
 #[derive(Debug, Serialize, Deserialize, PartialEq,)]
 pub struct JsonSchema {
-    pub nc_type: DataType,
-    pub nullable:  bool,
+    pub nc_type:  DataType,
+    pub nullable: bool,
 }
 
 #[derive(Debug, Serialize, Deserialize,)]
@@ -67,10 +67,7 @@ fn infer_json_schema(value: &serde_json::Value,) -> JsonSchema {
             false
         };
 
-    JsonSchema {
-        nc_type,
-        nullable,
-    }
+    JsonSchema { nc_type, nullable, }
 }
 
 fn merge_json_schemas(a: JsonSchema, b: JsonSchema,) -> JsonSchema {
@@ -90,58 +87,56 @@ fn merge_json_schemas(a: JsonSchema, b: JsonSchema,) -> JsonSchema {
     }
 }
 
-pub fn read_json_stream(
-    file_path: &Path,
-) -> Result<RecordStream, DataReaderError> {
-    let is_jsonl = file_path.extension().is_some_and(|ext| ext == "jsonl");
-    let file = File::open(file_path).map_err(|e| DataReaderError::FileReadError {
-        path: file_path.to_path_buf(),
+pub fn read_json_stream(file_path: &Path,) -> Result<RecordStream, DataReaderError,> {
+    let is_jsonl = file_path.extension().is_some_and(|ext| ext == "jsonl",);
+    let file = File::open(file_path,).map_err(|e| DataReaderError::FileReadError {
+        path:   file_path.to_path_buf(),
         source: e,
-    })?;
+    },)?;
     let path_clone = file_path.to_path_buf();
-    let decoder = crate::reader::charset::get_decoded_reader(file).map_err(|e| DataReaderError::FileReadError {
-        path: file_path.to_path_buf(),
-        source: e,
-    })?;
+    let decoder = crate::reader::charset::get_decoded_reader(file,).map_err(|e| {
+        DataReaderError::FileReadError {
+            path:   file_path.to_path_buf(),
+            source: e,
+        }
+    },)?;
 
     if is_jsonl {
         use std::io::{BufRead, BufReader};
-        let reader = BufReader::new(decoder);
-        let stream = reader.lines().filter_map(move |line_res| {
-             match line_res {
-                 Ok(line) => {
-                     let trimmed = line.trim();
-                     if trimmed.is_empty() {
-                         None
-                     } else {
-                         match serde_json::from_str::<Value>(trimmed) {
-                             Ok(v) => Some(Ok(v)),
-                             Err(e) => Some(Err(DataReaderError::ParseError {
-                                 path: path_clone.clone(),
-                                 source: Box::new(e),
-                             })),
-                         }
-                     }
-                 }
-                 Err(e) => Some(Err(DataReaderError::FileReadError {
-                     path: path_clone.clone(),
-                     source: e,
-                 })),
-             }
-        });
-        Ok(Box::new(stream))
+        let reader = BufReader::new(decoder,);
+        let stream = reader.lines().filter_map(move |line_res| match line_res {
+            Ok(line,) => {
+                let trimmed = line.trim();
+                if trimmed.is_empty() {
+                    None
+                } else {
+                    match serde_json::from_str::<Value,>(trimmed,) {
+                        Ok(v,) => Some(Ok(v,),),
+                        Err(e,) => Some(Err(DataReaderError::ParseError {
+                            path:   path_clone.clone(),
+                            source: Box::new(e,),
+                        },),),
+                    }
+                }
+            },
+            Err(e,) => Some(Err(DataReaderError::FileReadError {
+                path:   path_clone.clone(),
+                source: e,
+            },),),
+        },);
+        Ok(Box::new(stream,),)
     } else {
         use std::io::BufReader;
-        let reader = BufReader::new(decoder);
-        let stream = serde_json::Deserializer::from_reader(reader)
+        let reader = BufReader::new(decoder,);
+        let stream = serde_json::Deserializer::from_reader(reader,)
             .into_iter::<Value>()
             .map(move |res| {
                 res.map_err(|e| DataReaderError::ParseError {
-                    path: path_clone.clone(),
-                    source: Box::new(e),
-                })
-            });
-        Ok(Box::new(stream))
+                    path:   path_clone.clone(),
+                    source: Box::new(e,),
+                },)
+            },);
+        Ok(Box::new(stream,),)
     }
 }
 
@@ -152,7 +147,7 @@ pub fn read_json_value(
     let num_lines_to_extract = head.unwrap_or(0,);
     let is_jsonl = file_path.extension().is_some_and(|ext| ext == "jsonl",);
 
-    let stream = read_json_stream(file_path)?;
+    let stream = read_json_stream(file_path,)?;
     let mut values = Vec::new();
     let mut inferred_schema: Option<JsonSchema,> = None;
 
@@ -172,10 +167,12 @@ pub fn read_json_value(
             path:   file_path.to_path_buf(),
             source: e,
         },)?;
-        let decoder = crate::reader::charset::get_decoded_reader(file).map_err(|e| DataReaderError::FileReadError {
-            path: file_path.to_path_buf(),
-            source: e,
-        })?;
+        let decoder = crate::reader::charset::get_decoded_reader(file,).map_err(|e| {
+            DataReaderError::FileReadError {
+                path:   file_path.to_path_buf(),
+                source: e,
+            }
+        },)?;
         let reader = BufReader::new(decoder,);
         let lines: Vec<String,> = reader
             .lines()

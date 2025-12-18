@@ -6,7 +6,8 @@ use clap::{ArgGroup, CommandFactory, Parser};
 use nc_reader::file_reader::FileReaderOptions;
 use nc_reader::output::{OutputFormat, OutputMode};
 use tracing::{info, warn};
-use tracing_subscriber::{fmt, prelude::*, EnvFilter};
+use tracing_subscriber::prelude::*;
+use tracing_subscriber::{EnvFilter, fmt};
 
 #[derive(Parser, Debug,)]
 #[command(
@@ -23,8 +24,8 @@ use tracing_subscriber::{fmt, prelude::*, EnvFilter};
                   interface for diverse data sources.
 
     Usage:
-        nc_reader --file-path <FILE_PATH> [--format <FORMAT>] [--schema] [--head <LINES>] \
-                  [--all] [--file-type <TYPE>] [--output-path <PATH>] [--analyze]
+        nc_reader --file-path <FILE_PATH> [--format <FORMAT>] [--schema] [--head <LINES>] [--all] \
+                  [--file-type <TYPE>] [--output-path <PATH>] [--analyze]
         nc_reader --directory-path <DIRECTORY_PATH> [--format <FORMAT>] [--schema] [--head \
                   <LINES>] [--all] [--file-type <TYPE>] [--recursive] [--filter-ext <EXT>] \
                   [--output-path <PATH>] [--analyze]

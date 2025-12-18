@@ -45,14 +45,17 @@ pub struct ParquetDataForAnalysis {
 use crate::nc_reader_result::RecordStream;
 
 pub struct ParquetStream {
-    reader: parquet::arrow::arrow_reader::ParquetRecordBatchReader,
-    current_batch: Option<arrow::record_batch::RecordBatch>,
-    current_row: usize,
-    path: std::path::PathBuf,
+    reader:        parquet::arrow::arrow_reader::ParquetRecordBatchReader,
+    current_batch: Option<arrow::record_batch::RecordBatch,>,
+    current_row:   usize,
+    path:          std::path::PathBuf,
 }
 
 impl ParquetStream {
-    pub fn new(reader: parquet::arrow::arrow_reader::ParquetRecordBatchReader, path: std::path::PathBuf) -> Self {
+    pub fn new(
+        reader: parquet::arrow::arrow_reader::ParquetRecordBatchReader,
+        path: std::path::PathBuf,
+    ) -> Self {
         Self {
             reader,
             current_batch: None,
@@ -63,22 +66,22 @@ impl ParquetStream {
 }
 
 impl Iterator for ParquetStream {
-    type Item = Result<serde_json::Value, DataReaderError>;
+    type Item = Result<serde_json::Value, DataReaderError,>;
 
-    fn next(&mut self) -> Option<Self::Item> {
+    fn next(&mut self,) -> Option<Self::Item,> {
         loop {
-            if let Some(batch) = &self.current_batch {
+            if let Some(batch,) = &self.current_batch {
                 if self.current_row < batch.num_rows() {
                     let mut row_map = serde_json::Map::new();
                     let schema = batch.schema();
                     for col_idx in 0..batch.num_columns() {
-                        let column = batch.column(col_idx);
-                        let column_name = schema.field(col_idx).name();
-                        let value = arrow_to_json_value(column, self.current_row);
-                        row_map.insert(column_name.to_string(), value);
+                        let column = batch.column(col_idx,);
+                        let column_name = schema.field(col_idx,).name();
+                        let value = arrow_to_json_value(column, self.current_row,);
+                        row_map.insert(column_name.to_string(), value,);
                     }
                     self.current_row += 1;
-                    return Some(Ok(serde_json::Value::Object(row_map)));
+                    return Some(Ok(serde_json::Value::Object(row_map,),),);
                 } else {
                     self.current_batch = None;
                     self.current_row = 0;
@@ -86,101 +89,151 @@ impl Iterator for ParquetStream {
             }
 
             match self.reader.next() {
-                Some(Ok(batch)) => {
-                    self.current_batch = Some(batch);
+                Some(Ok(batch,),) => {
+                    self.current_batch = Some(batch,);
                     self.current_row = 0;
-                }
-                Some(Err(e)) => return Some(Err(DataReaderError::ParseError {
-                    path: self.path.clone(),
-                    source: Box::new(e),
-                })),
+                },
+                Some(Err(e,),) => {
+                    return Some(Err(DataReaderError::ParseError {
+                        path:   self.path.clone(),
+                        source: Box::new(e,),
+                    },),);
+                },
                 None => return None,
             }
         }
     }
 }
 
-pub fn read_parquet_stream(
-    file_path: &Path,
-) -> Result<RecordStream, DataReaderError> {
-    let file = File::open(file_path).map_err(|e| DataReaderError::FileReadError {
-        path: file_path.to_path_buf(),
+pub fn read_parquet_stream(file_path: &Path,) -> Result<RecordStream, DataReaderError,> {
+    let file = File::open(file_path,).map_err(|e| DataReaderError::FileReadError {
+        path:   file_path.to_path_buf(),
         source: e,
-    })?;
-    
-    let builder = ArrowReaderBuilder::try_new(file).map_err(|e| DataReaderError::ParseError {
-        path: file_path.to_path_buf(),
-        source: Box::new(e),
-    })?;
-    
+    },)?;
+
+    let builder = ArrowReaderBuilder::try_new(file,).map_err(|e| DataReaderError::ParseError {
+        path:   file_path.to_path_buf(),
+        source: Box::new(e,),
+    },)?;
+
     let reader = builder.build().map_err(|e| DataReaderError::ParseError {
-        path: file_path.to_path_buf(),
-        source: Box::new(e),
-    })?;
-    
-    Ok(Box::new(ParquetStream::new(reader, file_path.to_path_buf())))
+        path:   file_path.to_path_buf(),
+        source: Box::new(e,),
+    },)?;
+
+    Ok(Box::new(ParquetStream::new(
+        reader,
+        file_path.to_path_buf(),
+    ),),)
 }
 
-fn arrow_to_json_value(column: &dyn arrow::array::Array, row_idx: usize) -> serde_json::Value {
-    if column.is_null(row_idx) {
+fn arrow_to_json_value(column: &dyn arrow::array::Array, row_idx: usize,) -> serde_json::Value {
+    if column.is_null(row_idx,) {
         return serde_json::Value::Null;
     }
 
     match column.data_type() {
         arrow::datatypes::DataType::Int64 => {
-            let val = column.as_any().downcast_ref::<arrow::array::Int64Array>().unwrap().value(row_idx);
-            serde_json::Value::Number(val.into())
-        }
-        arrow::datatypes::DataType::Int32 => {
-            let val = column.as_any().downcast_ref::<arrow::array::Int32Array>().unwrap().value(row_idx);
-            serde_json::Value::Number(val.into())
-        }
-        arrow::datatypes::DataType::Float64 => {
-            let val = column.as_any().downcast_ref::<arrow::array::Float64Array>().unwrap().value(row_idx);
-            serde_json::Number::from_f64(val).map(serde_json::Value::Number).unwrap_or(serde_json::Value::Null)
-        }
-        arrow::datatypes::DataType::Float32 => {
-            let val = column.as_any().downcast_ref::<arrow::array::Float32Array>().unwrap().value(row_idx);
-            serde_json::Number::from_f64(val as f64).map(serde_json::Value::Number).unwrap_or(serde_json::Value::Null)
-        }
-        arrow::datatypes::DataType::Boolean => {
-            let val = column.as_any().downcast_ref::<arrow::array::BooleanArray>().unwrap().value(row_idx);
-            serde_json::Value::Bool(val)
-        }
-        arrow::datatypes::DataType::Utf8 => {
-            let val = column.as_any().downcast_ref::<arrow::array::StringArray>().unwrap().value(row_idx);
-            serde_json::Value::String(val.to_string())
-        }
-        arrow::datatypes::DataType::Date32 => {
-            let days = column.as_any().downcast_ref::<arrow::array::Date32Array>().unwrap().value(row_idx);
-            NaiveDate::from_ymd_opt(1970, 1, 1)
+            let val = column
+                .as_any()
+                .downcast_ref::<arrow::array::Int64Array>()
                 .unwrap()
-                .checked_add_days(chrono::Days::new(days as u64))
-                .map_or_else(|| serde_json::Value::Null, |d| serde_json::Value::String(d.to_string()))
-        }
-        arrow::datatypes::DataType::Timestamp(_, _) => {
-            // Simplified timestamp handling for now, can be improved to match existing logic if needed
-            let ts_ns = column.as_any().downcast_ref::<arrow::array::TimestampNanosecondArray>()
-                .map(|a| a.value(row_idx))
+                .value(row_idx,);
+            serde_json::Value::Number(val.into(),)
+        },
+        arrow::datatypes::DataType::Int32 => {
+            let val = column
+                .as_any()
+                .downcast_ref::<arrow::array::Int32Array>()
+                .unwrap()
+                .value(row_idx,);
+            serde_json::Value::Number(val.into(),)
+        },
+        arrow::datatypes::DataType::Float64 => {
+            let val = column
+                .as_any()
+                .downcast_ref::<arrow::array::Float64Array>()
+                .unwrap()
+                .value(row_idx,);
+            serde_json::Number::from_f64(val,)
+                .map(serde_json::Value::Number,)
+                .unwrap_or(serde_json::Value::Null,)
+        },
+        arrow::datatypes::DataType::Float32 => {
+            let val = column
+                .as_any()
+                .downcast_ref::<arrow::array::Float32Array>()
+                .unwrap()
+                .value(row_idx,);
+            serde_json::Number::from_f64(val as f64,)
+                .map(serde_json::Value::Number,)
+                .unwrap_or(serde_json::Value::Null,)
+        },
+        arrow::datatypes::DataType::Boolean => {
+            let val = column
+                .as_any()
+                .downcast_ref::<arrow::array::BooleanArray>()
+                .unwrap()
+                .value(row_idx,);
+            serde_json::Value::Bool(val,)
+        },
+        arrow::datatypes::DataType::Utf8 => {
+            let val = column
+                .as_any()
+                .downcast_ref::<arrow::array::StringArray>()
+                .unwrap()
+                .value(row_idx,);
+            serde_json::Value::String(val.to_string(),)
+        },
+        arrow::datatypes::DataType::Date32 => {
+            let days = column
+                .as_any()
+                .downcast_ref::<arrow::array::Date32Array>()
+                .unwrap()
+                .value(row_idx,);
+            NaiveDate::from_ymd_opt(1970, 1, 1,)
+                .unwrap()
+                .checked_add_days(chrono::Days::new(days as u64,),)
+                .map_or_else(
+                    || serde_json::Value::Null,
+                    |d| serde_json::Value::String(d.to_string(),),
+                )
+        },
+        arrow::datatypes::DataType::Timestamp(_, _,) => {
+            // Simplified timestamp handling for now, can be improved to match existing logic if
+            // needed
+            let ts_ns = column
+                .as_any()
+                .downcast_ref::<arrow::array::TimestampNanosecondArray>()
+                .map(|a| a.value(row_idx,),)
                 .or_else(|| {
-                    column.as_any().downcast_ref::<arrow::array::TimestampMicrosecondArray>().map(|a| a.value(row_idx) * 1000)
-                })
+                    column
+                        .as_any()
+                        .downcast_ref::<arrow::array::TimestampMicrosecondArray>()
+                        .map(|a| a.value(row_idx,) * 1000,)
+                },)
                 .or_else(|| {
-                    column.as_any().downcast_ref::<arrow::array::TimestampMillisecondArray>().map(|a| a.value(row_idx) * 1_000_000)
-                })
+                    column
+                        .as_any()
+                        .downcast_ref::<arrow::array::TimestampMillisecondArray>()
+                        .map(|a| a.value(row_idx,) * 1_000_000,)
+                },)
                 .or_else(|| {
-                    column.as_any().downcast_ref::<arrow::array::TimestampSecondArray>().map(|a| a.value(row_idx) * 1_000_000_000)
-                });
-            
+                    column
+                        .as_any()
+                        .downcast_ref::<arrow::array::TimestampSecondArray>()
+                        .map(|a| a.value(row_idx,) * 1_000_000_000,)
+                },);
+
             match ts_ns {
-                Some(ns) => {
-                    let dt = DateTime::from_timestamp_nanos(ns);
-                    serde_json::Value::String(dt.to_string())
-                }
-                None => serde_json::Value::String(format!("{:?}", column.data_type()))
+                Some(ns,) => {
+                    let dt = DateTime::from_timestamp_nanos(ns,);
+                    serde_json::Value::String(dt.to_string(),)
+                },
+                None => serde_json::Value::String(format!("{:?}", column.data_type()),),
             }
-        }
-        _ => serde_json::Value::String(format!("{:?}", column.data_type())),
+        },
+        _ => serde_json::Value::String(format!("{:?}", column.data_type()),),
     }
 }
 
@@ -642,7 +695,7 @@ pub fn read_full_parquet_content(
                                 .unwrap()
                                 .value(row_idx,);
                             let dt_utc = DateTime::from_timestamp_nanos(ts_ns,);
-                            let chrono_tz = Tz::from_str(&tz,).unwrap_or(Tz::UTC,);
+                            let chrono_tz = Tz::from_str(tz,).unwrap_or(Tz::UTC,);
                             dt_utc.with_timezone(&chrono_tz,).to_string()
                         },
                         arrow::datatypes::DataType::Timestamp(_, None,) => {

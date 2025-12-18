@@ -2,11 +2,11 @@ use std::fs::File;
 use std::io::Read;
 use std::path::{Path, PathBuf};
 
-use walkdir::WalkDir;
 use tracing::error;
+use walkdir::WalkDir;
 
-use crate::nc_reader_result::{DataReaderResult, FileMetadata};
 use crate::error::DataReaderError;
+use crate::nc_reader_result::{DataReaderResult, FileMetadata};
 use crate::output::{OutputFormat, OutputMode};
 
 #[derive(Debug, PartialEq, Clone,)]
@@ -145,7 +145,7 @@ pub fn read_file_to_data(
                 DataReaderResult::Json(
                     data,
                     FileMetadata {
-                        size:       file_size,
+                        size: file_size,
                         line_count,
                     },
                 )
@@ -363,37 +363,37 @@ pub fn read_file_to_raw_content(
 pub fn read_file_to_stream(
     file_path: &Path,
     file_format: FileFormat,
-) -> Result<DataReaderResult, DataReaderError> {
+) -> Result<DataReaderResult, DataReaderError,> {
     let base_metadata =
-        std::fs::metadata(file_path).map_err(|e| DataReaderError::FileReadError {
+        std::fs::metadata(file_path,).map_err(|e| DataReaderError::FileReadError {
             path:   file_path.to_path_buf(),
             source: e,
-        })?;
+        },)?;
     let file_size = base_metadata.len();
     let metadata = FileMetadata {
-        size: file_size,
+        size:       file_size,
         line_count: None,
     };
 
     match file_format {
         FileFormat::Csv => {
-            let (_headers, stream) = crate::reader::csv_reader::read_csv_stream(file_path)?;
-            Ok(DataReaderResult::Stream(stream, metadata))
-        }
+            let (_headers, stream,) = crate::reader::csv_reader::read_csv_stream(file_path,)?;
+            Ok(DataReaderResult::Stream(stream, metadata,),)
+        },
         FileFormat::Json => {
-            let stream = crate::reader::json_reader::read_json_stream(file_path)?;
-            Ok(DataReaderResult::Stream(stream, metadata))
-        }
+            let stream = crate::reader::json_reader::read_json_stream(file_path,)?;
+            Ok(DataReaderResult::Stream(stream, metadata,),)
+        },
         FileFormat::Xml => {
-            let stream = crate::reader::xml_reader::create_xml_stream(file_path)?;
-            Ok(DataReaderResult::Stream(stream, metadata))
-        }
+            let stream = crate::reader::xml_reader::create_xml_stream(file_path,)?;
+            Ok(DataReaderResult::Stream(stream, metadata,),)
+        },
         FileFormat::Parquet => {
-            let stream = crate::reader::parquet_reader::read_parquet_stream(file_path)?;
-            Ok(DataReaderResult::Stream(stream, metadata))
-        }
+            let stream = crate::reader::parquet_reader::read_parquet_stream(file_path,)?;
+            Ok(DataReaderResult::Stream(stream, metadata,),)
+        },
         // For other formats, we don't have a record-based stream yet, so fall back
-        _ => read_file_to_data(file_path, None, file_format),
+        _ => read_file_to_data(file_path, None, file_format,),
     }
 }
 
@@ -448,13 +448,10 @@ pub async fn read_file_content(
         OutputMode::SchemaOnly | OutputMode::Default => {
             read_file_to_data(file_path, options.head, determined_format,)
         },
-        OutputMode::Stream => {
-            read_file_to_stream(file_path, determined_format)
-        }
+        OutputMode::Stream => read_file_to_stream(file_path, determined_format,),
         OutputMode::Analyze => match determined_format {
             FileFormat::Parquet => {
-                let data =
-                    crate::reader::parquet_reader::read_parquet_nc_for_analysis(file_path,)?;
+                let data = crate::reader::parquet_reader::read_parquet_nc_for_analysis(file_path,)?;
                 let metadata =
                     std::fs::metadata(file_path,).map_err(|e| DataReaderError::FileReadError {
                         path:   file_path.to_path_buf(),

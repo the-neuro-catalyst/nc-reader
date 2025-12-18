@@ -1,10 +1,10 @@
+use std::fs::File;
 use std::io::Read;
 use std::path::Path;
-use std::fs::File;
 
+use encoding_rs_io::DecodeReaderBytes;
 use serde::{Deserialize, Serialize}; // Added
 use toml::Value;
-use encoding_rs_io::DecodeReaderBytes;
 
 use crate::error::DataReaderError;
 
@@ -20,17 +20,19 @@ pub fn read_toml_value(
 ) -> Result<TomlData, DataReaderError,> {
     let num_lines_to_extract = head.unwrap_or(0,);
 
-    let file = File::open(file_path).map_err(|e| DataReaderError::FileReadError {
-        path: file_path.to_path_buf(),
+    let file = File::open(file_path,).map_err(|e| DataReaderError::FileReadError {
+        path:   file_path.to_path_buf(),
         source: e,
-    })?;
-    
-    let mut decoder = DecodeReaderBytes::new(file);
+    },)?;
+
+    let mut decoder = DecodeReaderBytes::new(file,);
     let mut content = String::new();
-    decoder.read_to_string(&mut content).map_err(|e| DataReaderError::FileReadError {
-        path: file_path.to_path_buf(),
-        source: e,
-    })?;
+    decoder
+        .read_to_string(&mut content,)
+        .map_err(|e| DataReaderError::FileReadError {
+            path:   file_path.to_path_buf(),
+            source: e,
+        },)?;
 
     let value: Value = toml::from_str(&content,).map_err(|e| DataReaderError::ParseError {
         path:   file_path.to_path_buf(),

@@ -293,10 +293,8 @@ async fn test_output_to_file_single_file() -> Result<(), Box<dyn std::error::Err
     let input_file_path = create_temp_file(temp_dir.path(), "input.txt", "hello world",);
     let output_file_path = temp_dir.path().join("output.txt",);
 
-    let data_reader_bin =
-        std::env::var("CARGO_BIN_EXE_data-reader",).expect("CARGO_BIN_EXE_data-reader not set",);
-    assert_cmd::Command::new(data_reader_bin,)
-        .arg("--file-path",)
+    let mut cmd = assert_cmd::Command::cargo_bin("nc-reader",)?;
+    cmd.arg("--file-path",)
         .arg(&input_file_path,)
         .args(&["--output-path", output_file_path.to_str().unwrap(),],)
         .assert()
@@ -320,10 +318,8 @@ async fn test_output_to_file_directory_results() -> Result<(), Box<dyn std::erro
     let output_file_path = temp_dir.path().join("dir_output.json",);
     File::create(&output_file_path,)?;
 
-    let data_reader_bin =
-        std::env::var("CARGO_BIN_EXE_data-reader",).expect("CARGO_BIN_EXE_data-reader not set",);
-    assert_cmd::Command::new(data_reader_bin,)
-        .args(&["--directory-path", temp_dir.path().to_str().unwrap(),],)
+    let mut cmd = assert_cmd::Command::cargo_bin("nc-reader",)?;
+    cmd.args(&["--directory-path", temp_dir.path().to_str().unwrap(),],)
         .args(&["--output-path", output_file_path.to_str().unwrap(),],)
         .args(&["--format", "json",],)
         .assert()
